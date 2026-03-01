@@ -6,7 +6,7 @@ namespace config
   // LED strip (APA106 on RMT)
   constexpr uint8_t kLedPin = 11;
   constexpr uint16_t kLedCount = 20;
-  constexpr uint8_t kLedBrightness = 60;
+  constexpr uint8_t kLedBrightness = 26;
   constexpr uint16_t kLedFrameMs = 30;
 
   // OLED display (SSD1306 over I2C)
@@ -16,4 +16,11 @@ namespace config
   constexpr uint16_t kScreenWidth = 128;
   constexpr uint16_t kScreenHeight = 64;
   constexpr uint16_t kNekoFrameMs = 150;
+
+  // Microphone (INMP441 over I2S)
+  constexpr uint8_t kMicSck = 7;
+  constexpr uint8_t kMicWs = 15;
+  constexpr uint8_t kMicSd = 5;
+  constexpr uint16_t kMicSampleRate = 16000;
+  constexpr uint16_t kMicBlockSize = 256;
 }

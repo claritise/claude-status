@@ -82,7 +82,11 @@ namespace
   NekoState sState = IDLE;
   uint16_t sFrame = 0;
   uint32_t sStateStartMs = 0;
+  uint8_t sVolume = 0;
+  uint8_t sSmoothedVol = 0;
 
+  constexpr uint8_t kWakeThreshold = 40;   // volume to wake from sleep
+  constexpr uint8_t kHappyThreshold = 80;  // volume to trigger happy
   constexpr uint32_t kStateDurations[] = { 10000, 4000, 6000 };
   constexpr uint8_t kSpriteW = 16;
   constexpr uint8_t kSpriteH = 16;
@@ -108,14 +112,33 @@ namespace
     }
   }
 
+  void changeState(NekoState next)
+  {
+    sState = next;
+    sStateStartMs = millis();
+    sFrame = 0;
+  }
+
   void advanceState()
   {
     uint32_t now = millis();
+
+    // Sound interrupts: wake the kitty!
+    if (sSmoothedVol >= kHappyThreshold && sState != HAPPY)
+    {
+      changeState(HAPPY);
+      return;
+    }
+    if (sSmoothedVol >= kWakeThreshold && sState == SLEEP)
+    {
+      changeState(IDLE);
+      return;
+    }
+
+    // Normal timer-based transitions
     if (now - sStateStartMs >= kStateDurations[sState])
     {
-      sState = static_cast<NekoState>((sState + 1) % NUM_STATES);
-      sStateStartMs = now;
-      sFrame = 0;
+      changeState(static_cast<NekoState>((sState + 1) % NUM_STATES));
     }
   }
 
@@ -187,6 +210,20 @@ namespace oled
     Serial.println("OLED ready: 128x64 on GPIO 16/17");
     sStateStartMs = millis();
     return true;
+  }
+
+  void feedVolume(uint8_t vol)
+  {
+    // Fast attack, slow decay smoothing.
+    if (vol > sSmoothedVol)
+    {
+      sSmoothedVol = vol;
+    }
+    else
+    {
+      sSmoothedVol = sSmoothedVol - (sSmoothedVol >> 3); // decay ~12%
+    }
+    sVolume = vol;
   }
 
   void drawNekoFrame()
