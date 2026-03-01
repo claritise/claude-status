@@ -94,6 +94,13 @@ namespace
   constexpr int16_t kCatX = (config::kScreenWidth - kSpriteW * kScale) / 2;
   constexpr int16_t kCatY = 4;
 
+  // Spectrum analyser
+  constexpr uint8_t kEqBars = 16;
+  constexpr uint8_t kEqBarW = 6;
+  constexpr uint8_t kEqGap = 2;
+  constexpr uint8_t kEqMaxH = 8;
+  uint8_t sBarLevels[kEqBars] = {};
+
   // Draw a 1-bit bitmap scaled up by an integer factor.
   void drawScaledBitmap(int16_t x, int16_t y, const uint8_t *bmp,
                         uint8_t w, uint8_t h, uint8_t scale)
@@ -142,6 +149,38 @@ namespace
     }
   }
 
+  void updateEqualizer()
+  {
+    for (uint8_t i = 0; i < kEqBars; i++)
+    {
+      // Per-bar pseudo-random variation to simulate frequency bands.
+      uint8_t hash = (uint8_t)((i * 173 + sFrame * 47) ^ (i * 31 + sFrame * 13));
+      uint16_t target = ((uint16_t)sSmoothedVol * (128 + (hash & 0x7F))) >> 8;
+      if (target > 255) target = 255;
+
+      // Fast attack, slow decay per bar.
+      if ((uint8_t)target > sBarLevels[i])
+        sBarLevels[i] = (uint8_t)target;
+      else
+        sBarLevels[i] = sBarLevels[i] - (sBarLevels[i] >> 2);
+
+    }
+  }
+
+  void drawEqualizer()
+  {
+    int16_t x = 1;
+    for (uint8_t i = 0; i < kEqBars; i++)
+    {
+      uint8_t h = (uint16_t)sBarLevels[i] * kEqMaxH / 255;
+      if (h > 0)
+      {
+        sDisplay.fillRect(x, 63 - h, kEqBarW, h, SSD1306_WHITE);
+      }
+      x += kEqBarW + kEqGap;
+    }
+  }
+
   void drawIdle()
   {
     int16_t bob = ((sFrame / 3) % 2) ? -kScale : 0;
@@ -149,11 +188,6 @@ namespace
     drawScaledBitmap(kCatX, kCatY + bob,
                      blink ? kNekoClosed : kNekoOpen,
                      kSpriteW, kSpriteH, kScale);
-
-    sDisplay.setTextSize(1);
-    sDisplay.setTextColor(SSD1306_WHITE);
-    sDisplay.setCursor(40, 56);
-    sDisplay.print("~ nyan ~");
   }
 
   void drawHappy()
@@ -171,29 +205,12 @@ namespace
     {
       drawScaledBitmap(heartX, heartY, kHeart, 5, 5, 2);
     }
-
-    sDisplay.setTextSize(1);
-    sDisplay.setTextColor(SSD1306_WHITE);
-    sDisplay.setCursor(37, 56);
-    sDisplay.print("happy :3");
   }
 
   void drawSleep()
   {
     drawScaledBitmap(kCatX, kCatY + kScale, kNekoClosed,
                      kSpriteW, kSpriteH, kScale);
-
-    // Animated zzz (appear one by one, then reset)
-    sDisplay.setTextSize(1);
-    sDisplay.setTextColor(SSD1306_WHITE);
-    int16_t zx = kCatX + kSpriteW * kScale + 4;
-    uint8_t zStep = (sFrame / 6) % 4;
-    if (zStep >= 1) { sDisplay.setCursor(zx, 28);      sDisplay.print("z"); }
-    if (zStep >= 2) { sDisplay.setCursor(zx + 7, 18);  sDisplay.print("Z"); }
-    if (zStep >= 3) { sDisplay.setCursor(zx + 14, 8);  sDisplay.print("z"); }
-
-    sDisplay.setCursor(31, 56);
-    sDisplay.print("sleeping...");
   }
 }
 
@@ -224,6 +241,7 @@ namespace oled
       sSmoothedVol = sSmoothedVol - (sSmoothedVol >> 3); // decay ~12%
     }
     sVolume = vol;
+    updateEqualizer();
   }
 
   void drawNekoFrame()
@@ -239,6 +257,7 @@ namespace oled
     default: break;
     }
 
+    drawEqualizer();
     sDisplay.display();
     sFrame++;
   }
