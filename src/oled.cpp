@@ -29,7 +29,6 @@ namespace
 
   oled::Anim sAnim = oled::THINKING;
   uint16_t sFrame = 0;
-  constexpr int16_t kSpriteX = (config::kScreenWidth - kThinkingW) / 2;
   constexpr int16_t kSpriteY = 0;
 
   struct AnimData
@@ -88,14 +87,15 @@ namespace oled
 
     const AnimData &ad = kAnims[sAnim];
 
+    int16_t spriteX = (config::kScreenWidth - ad.w) / 2;
     const uint8_t *frame = (const uint8_t *)pgm_read_ptr(&ad.frames[sFrame % ad.count]);
-    sDisplay.drawBitmap(kSpriteX, kSpriteY, frame, ad.w, ad.h, SSD1306_WHITE);
+    sDisplay.drawBitmap(spriteX, kSpriteY, frame, ad.w, ad.h, SSD1306_WHITE);
 
     sDisplay.display();
     sFrame++;
 
-    // One-shot: DONE plays once then transitions to WAITING
-    if (sAnim == DONE && sFrame >= ad.count)
+    // One-shot animations: play once then transition to WAITING
+    if (sFrame >= ad.count && (sAnim == DONE || sAnim == BOOT || sAnim == SLEEP))
     {
       sAnim = WAITING;
       sFrame = 0;

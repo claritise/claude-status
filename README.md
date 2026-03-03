@@ -46,7 +46,28 @@ Claude Code hook → set_status.sh → USB serial → ESP32 → OLED + LEDs
 | sleep | `SessionEnd`, `Notification` | `idle_prompt` | off |
 | waiting | after done finishes | — | off |
 
-Hooks are configured in `~/.claude/settings.json`. See the [hooks guide](https://code.claude.com/docs/en/hooks) for setup.
+### Hook setup
+
+1. Flash the firmware to your ESP32 (see [Build](#build))
+2. Open `settings.json` from this repo and replace every `/path/to/nekode` with the absolute path to your clone
+3. Merge the hooks into your Claude Code settings:
+
+```bash
+# Open your Claude Code settings
+vim ~/.claude/settings.json
+```
+
+Copy the `"hooks"` object from this repo's `settings.json` into your `~/.claude/settings.json`. If you already have hooks, merge the arrays for each event.
+
+4. Make the script executable:
+
+```bash
+chmod +x /path/to/nekode/set_status.sh
+```
+
+5. Start a new Claude Code session — nekode should play the boot animation
+
+See the [hooks guide](https://code.claude.com/docs/en/hooks) for more details on hook configuration.
 
 ## Hardware
 

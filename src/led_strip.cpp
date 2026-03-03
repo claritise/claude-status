@@ -89,7 +89,7 @@ namespace led
       return;
     }
     rmtSetTick(sRmt, 100);
-    Serial.println("LED strip ready: 20x APA106 on GPIO 11");
+    Serial.println("LED strip ready: 6x APA106 on GPIO 11");
     memset(sPixels, 0, sizeof(sPixels));
     show();
   }
