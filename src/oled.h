@@ -3,7 +3,9 @@
 
 namespace oled
 {
+  enum Anim : uint8_t { IDLE, RUNNING, TYPING };
+
   bool init();
-  void feedVolume(uint8_t vol);
-  void drawNekoFrame();
+  void setAnim(Anim a);
+  void drawFrame();
 }

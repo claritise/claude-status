@@ -8,44 +8,21 @@ namespace
 {
   rmt_obj_t *sRmt = nullptr;
   uint8_t sPixels[config::kLedCount * 3];
-}
+  bool sActive = false;
 
-namespace led
-{
-  void init()
-  {
-    sRmt = rmtInit(config::kLedPin, RMT_TX_MODE, RMT_MEM_64);
-    if (sRmt == nullptr)
-    {
-      Serial.println("RMT init failed");
-      return;
-    }
-    rmtSetTick(sRmt, 100);
-    Serial.println("LED strip ready: 20x APA106 on GPIO 11");
-    clear();
-    show();
-  }
-
-  // APA106 uses RGB byte order.
   void setPixel(uint16_t index, uint8_t r, uint8_t g, uint8_t b)
   {
+    if (index >= config::kLedCount) return;
     uint16_t offset = index * 3;
     sPixels[offset + 0] = r;
     sPixels[offset + 1] = g;
     sPixels[offset + 2] = b;
   }
 
-  void clear()
-  {
-    memset(sPixels, 0, sizeof(sPixels));
-  }
-
   void show()
   {
-    if (sRmt == nullptr)
-    {
-      return;
-    }
+    if (sRmt == nullptr) return;
+
     constexpr uint32_t kNumBits = config::kLedCount * 24;
     rmt_data_t rmtData[kNumBits];
 
@@ -78,11 +55,6 @@ namespace led
     rmtWriteBlocking(sRmt, rmtData, kNumBits);
   }
 
-  uint16_t count()
-  {
-    return config::kLedCount;
-  }
-
   // Convert HSV (h: 0-1535, s: 0-255, v: 0-255) to RGB.
   void hsvToRgb(uint16_t h, uint8_t s, uint8_t v,
                 uint8_t &r, uint8_t &g, uint8_t &b)
@@ -103,5 +75,46 @@ namespace led
     case 4: r = t; g = p; b = v; break;
     default: r = v; g = p; b = q; break;
     }
+  }
+}
+
+namespace led
+{
+  void init()
+  {
+    sRmt = rmtInit(config::kLedPin, RMT_TX_MODE, RMT_MEM_64);
+    if (sRmt == nullptr)
+    {
+      Serial.println("RMT init failed");
+      return;
+    }
+    rmtSetTick(sRmt, 100);
+    Serial.println("LED strip ready: 20x APA106 on GPIO 11");
+    memset(sPixels, 0, sizeof(sPixels));
+    show();
+  }
+
+  void setActive(bool on)
+  {
+    sActive = on;
+  }
+
+  void tick()
+  {
+    if (!sActive)
+    {
+      memset(sPixels, 0, sizeof(sPixels));
+      show();
+      return;
+    }
+    uint16_t hue = -(uint16_t)(millis() / 2);
+    for (uint16_t i = 0; i < config::kLedCount; i++)
+    {
+      uint16_t pixelHue = hue + (i * 1536 / config::kLedCount);
+      uint8_t r, g, b;
+      hsvToRgb(pixelHue, 255, config::kLedBrightness, r, g, b);
+      setPixel(i, r, g, b);
+    }
+    show();
   }
 }
