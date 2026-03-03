@@ -11,13 +11,44 @@ namespace
   char gCmdBuf[32];
   uint8_t gCmdLen = 0;
 
+  struct CmdEntry
+  {
+    const char *name;
+    oled::Anim anim;
+    bool ledActive;
+  };
+
+  constexpr CmdEntry kCommands[] = {
+    { "thinking",   oled::THINKING,   true  },
+    { "reading",    oled::READING,    true  },
+    { "typing",     oled::TYPING,     true  },
+    { "running",    oled::RUNNING,    true  },
+    { "searching",  oled::SEARCHING,  true  },
+    { "done",       oled::DONE,       true  },
+    { "error",      oled::ERROR,      true  },
+    { "waiting",    oled::WAITING,    false },
+    { "boot",       oled::BOOT,       true  },
+    { "sleep",      oled::SLEEP,      false },
+    { "browsing",   oled::BROWSING,   true  },
+    { "spawning",   oled::SPAWNING,   true  },
+    { "herding",    oled::HERDING,    true  },
+    { "compacting", oled::COMPACTING, true  },
+    { "planning",   oled::PLANNING,   true  },
+  };
+
   void handleCommand(const char *cmd)
   {
-    if (strcmp(cmd, "idle") == 0)        { oled::setAnim(oled::IDLE);    led::setActive(false); }
-    else if (strcmp(cmd, "running") == 0) { oled::setAnim(oled::RUNNING); led::setActive(true);  }
-    else if (strcmp(cmd, "typing") == 0)  { oled::setAnim(oled::TYPING);  led::setActive(true);  }
-    else { Serial.print("unknown: "); Serial.println(cmd); return; }
-    Serial.print("anim="); Serial.println(cmd);
+    for (const auto &entry : kCommands)
+    {
+      if (strcmp(cmd, entry.name) == 0)
+      {
+        oled::setAnim(entry.anim);
+        led::setActive(entry.ledActive);
+        Serial.print("anim="); Serial.println(cmd);
+        return;
+      }
+    }
+    Serial.print("unknown: "); Serial.println(cmd);
   }
 
   void pollSerial()

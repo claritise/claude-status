@@ -1,8 +1,21 @@
 #include "oled.h"
 #include "config.h"
-#include "thinking.h"
-#include "running.h"
-#include "typing.h"
+#include "THINKING.h"
+#include "READING.h"
+#include "TYPING.h"
+#include "RUNNING.h"
+#include "SEARCHING.h"
+#include "DONE.h"
+#include "ERROR.h"
+#include "WAITING.h"
+#include "BOOT.h"
+#include "SLEEP.h"
+#include "BROWSING.h"
+#include "SPAWNING.h"
+#include "HERDING.h"
+#include "COMPACTING.h"
+#include "PLANNING.h"
+#include "led_strip.h"
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -14,10 +27,9 @@ namespace
 
   // --- Animation state ---
 
-  oled::Anim sAnim = oled::IDLE;
+  oled::Anim sAnim = oled::THINKING;
   uint16_t sFrame = 0;
-  // Center the 64x64 sprite on the 128x64 display
-  constexpr int16_t kSpriteX = (config::kScreenWidth - kIdleW) / 2;
+  constexpr int16_t kSpriteX = (config::kScreenWidth - kThinkingW) / 2;
   constexpr int16_t kSpriteY = 0;
 
   struct AnimData
@@ -28,10 +40,23 @@ namespace
     uint8_t h;
   };
 
+  // Order must match oled::Anim enum
   constexpr AnimData kAnims[] = {
-    { kIdleFrames,    kIdleFrameCount,    kIdleW,    kIdleH    },
-    { kRunningFrames, kRunningFrameCount, kRunningW, kRunningH },
-    { kTypingFrames,  kTypingFrameCount,  kTypingW,  kTypingH  },
+    { kThinkingFrames,   kThinkingFrameCount,   kThinkingW,   kThinkingH   },
+    { kReadingFrames,    kReadingFrameCount,    kReadingW,    kReadingH    },
+    { kTypingFrames,     kTypingFrameCount,     kTypingW,     kTypingH     },
+    { kRunningFrames,    kRunningFrameCount,    kRunningW,    kRunningH    },
+    { kSearchingFrames,  kSearchingFrameCount,  kSearchingW,  kSearchingH  },
+    { kDoneFrames,       kDoneFrameCount,       kDoneW,       kDoneH       },
+    { kErrorFrames,      kErrorFrameCount,      kErrorW,      kErrorH      },
+    { kWaitingFrames,    kWaitingFrameCount,    kWaitingW,    kWaitingH    },
+    { kBootFrames,       kBootFrameCount,       kBootW,       kBootH       },
+    { kSleepFrames,      kSleepFrameCount,      kSleepW,      kSleepH      },
+    { kBrowsingFrames,   kBrowsingFrameCount,   kBrowsingW,   kBrowsingH   },
+    { kSpawningFrames,   kSpawningFrameCount,   kSpawningW,   kSpawningH   },
+    { kHerdingFrames,    kHerdingFrameCount,    kHerdingW,    kHerdingH    },
+    { kCompactingFrames, kCompactingFrameCount, kCompactingW, kCompactingH },
+    { kPlanningFrames,   kPlanningFrameCount,   kPlanningW,   kPlanningH   },
   };
 
 }
@@ -62,10 +87,19 @@ namespace oled
     sDisplay.clearDisplay();
 
     const AnimData &ad = kAnims[sAnim];
+
     const uint8_t *frame = (const uint8_t *)pgm_read_ptr(&ad.frames[sFrame % ad.count]);
     sDisplay.drawBitmap(kSpriteX, kSpriteY, frame, ad.w, ad.h, SSD1306_WHITE);
 
     sDisplay.display();
     sFrame++;
+
+    // One-shot: DONE plays once then transitions to WAITING
+    if (sAnim == DONE && sFrame >= ad.count)
+    {
+      sAnim = WAITING;
+      sFrame = 0;
+      led::setActive(false);
+    }
   }
 }

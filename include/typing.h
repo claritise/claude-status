@@ -1,4 +1,4 @@
-// Auto-generated from typing.gif by gif_to_header.py
+// Auto-generated from TYPING.gif by gif_to_header.py
 // 16 frame(s), 64x64 pixels, 1-bit monochrome
 #pragma once
 #include <Arduino.h>
