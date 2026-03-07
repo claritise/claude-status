@@ -5,19 +5,28 @@
 
 STATUS="$1"
 
-# If no argument, try to read from stdin (hook mode passes JSON on stdin)
+# If no argument, consume stdin without blocking (hook mode passes JSON)
 if [ -z "$STATUS" ]; then
-  INPUT=$(cat)
-  # Hooks pass JSON on stdin; we don't need to parse it since the hook
-  # config determines which status to send (see settings.json).
+  cat > /dev/null &
   exit 0
 fi
 
 # Find the ESP32 serial port (ESP32-S3 USB CDC)
 PORT=$(ls /dev/cu.usbmodem* 2>/dev/null | head -1)
 if [ -z "$PORT" ]; then
-  exit 0  # ESP32 not connected, fail silently
+  exit 0
 fi
 
-# Send the command. Use a subshell to avoid blocking.
-printf '%s\n' "$STATUS" > "$PORT"
+# Send in background with a kill timer (macOS-friendly, no timeout needed)
+(
+  printf '%s\n' "$STATUS" > "$PORT"
+) &
+BGPID=$!
+
+# Kill it after 2 seconds if still running
+(
+  sleep 2
+  kill "$BGPID" 2>/dev/null
+) &
+
+exit 0
