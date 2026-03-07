@@ -1,6 +1,6 @@
 #!/bin/bash
-# Send animation status to ESP32 over serial.
-# Usage: set_status.sh <idle|running|typing>
+# Send animation status to ESP32 over WiFi (TCP) or serial fallback.
+# Usage: set_status.sh <status>
 # Called by Claude Code hooks via stdin JSON or direct argument.
 
 STATUS="$1"
@@ -11,19 +11,25 @@ if [ -z "$STATUS" ]; then
   exit 0
 fi
 
-# Find the ESP32 serial port (ESP32-S3 USB CDC)
+NEKODE_HOST="${NEKODE_HOST:-nekode.local}"
+NEKODE_PORT="${NEKODE_PORT:-23}"
+
+# Try WiFi first (nc with 1s timeout)
+if printf '%s\n' "$STATUS" | nc -w 1 "$NEKODE_HOST" "$NEKODE_PORT" 2>/dev/null; then
+  exit 0
+fi
+
+# Fallback to serial
 PORT=$(ls /dev/cu.usbmodem* 2>/dev/null | head -1)
 if [ -z "$PORT" ]; then
   exit 0
 fi
 
-# Send in background with a kill timer (macOS-friendly, no timeout needed)
 (
   printf '%s\n' "$STATUS" > "$PORT"
 ) &
 BGPID=$!
 
-# Kill it after 2 seconds if still running
 (
   sleep 2
   kill "$BGPID" 2>/dev/null

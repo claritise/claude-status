@@ -2,6 +2,7 @@
 #include "config.h"
 #include "led_strip.h"
 #include "oled.h"
+#include "wifi_server.h"
 
 namespace
 {
@@ -86,11 +87,18 @@ void setup()
   }
 
   led::init();
+  wifiserver::init();
 }
 
 void loop()
 {
   pollSerial();
+
+  char wifiCmd[32];
+  if (wifiserver::poll(wifiCmd, sizeof(wifiCmd)))
+  {
+    handleCommand(wifiCmd);
+  }
 
   uint32_t now = millis();
   if ((uint32_t)(now - gLastLedMs) >= config::kLedFrameMs)

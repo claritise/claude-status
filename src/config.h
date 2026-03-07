@@ -17,6 +17,10 @@ namespace config
   constexpr uint16_t kScreenHeight = 64;
   constexpr uint16_t kNekoFrameMs = 150;
 
+  // WiFi TCP server
+  constexpr uint16_t kTcpPort = 23;
+  constexpr const char *kMdnsHost = "nekode";
+
   // Microphone (INMP441 over I2S)
   constexpr uint8_t kMicSck = 7;
   constexpr uint8_t kMicWs = 15;
