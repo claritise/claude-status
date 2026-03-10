@@ -5,12 +5,12 @@ import { INSTANCE_COUNT, LEADER_KEY } from './lib/constants.js';
 
 describe('App', () => {
   it('renders the nekode header', () => {
-    const { lastFrame } = render(<App />);
+    const { lastFrame } = render(<App skipPty />);
     expect(lastFrame()).toContain('nekode');
   });
 
   it('renders all instance tabs', () => {
-    const { lastFrame } = render(<App />);
+    const { lastFrame } = render(<App skipPty />);
     const frame = lastFrame()!;
     for (let i = 1; i <= INSTANCE_COUNT; i++) {
       expect(frame).toContain(`[${i}]`);
@@ -18,12 +18,12 @@ describe('App', () => {
   });
 
   it('renders keybinding hint with correct leader key and instance count', () => {
-    const { lastFrame } = render(<App />);
+    const { lastFrame } = render(<App skipPty />);
     expect(lastFrame()).toContain(`${LEADER_KEY} → 1-${INSTANCE_COUNT} switch`);
   });
 
   it('stays alive waiting for input (does not immediately unmount)', async () => {
-    const { lastFrame, unmount } = render(<App />);
+    const { lastFrame, unmount } = render(<App skipPty />);
 
     // App should still be rendering after creation
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -33,7 +33,7 @@ describe('App', () => {
   });
 
   it('renders quit hint', () => {
-    const { lastFrame } = render(<App />);
+    const { lastFrame } = render(<App skipPty />);
     expect(lastFrame()).toContain('Ctrl+D quit');
   });
 });

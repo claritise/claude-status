@@ -247,6 +247,34 @@ Literate Programming Environment where markdown is the primary executable artifa
 5. **Cross-subsystem monorepo scope** — docs span firmware and application code. No existing tool handles multi-subsystem projects.
 6. **No ceremony scaling problem** — because the document IS both the spec and the docs, there's no "skip the spec for small changes" escape hatch needed. You're always editing the same document whether the change is small or large.
 
+## Knowledge graph panel
+
+The nekode IDE is the 4-panel Claude Code multiplexer (see [nekode-tui-plan.md](nekode-tui-plan.md)). The knowledge graph is an additional panel on top of that — a reader, not a writer.
+
+**Core principle:** Claude Code is the writing tool. The knowledge graph panel is a navigation and status tool. You refine documents by talking to Claude Code in the terminal panes. The graph panel shows you where you are in the knowledge base and what state everything is in.
+
+### Evolution path
+
+- **v1**: Plain markdown in `docs/`. Claude Code reads/writes them. No special panel — the docs are just files.
+- **v2**: Knowledge graph panel — renders the doc graph as a navigable view. Nodes = documents/sections, edges = markdown links, colour = status tags. Read-only. Click a node to tell the focused Claude Code instance to open that section.
+- **v3**: Obsidian-style but for product/technical work — tagged nodes, filtered views (show me everything at `status:planned` for `phase:2`), dependency visualization, completeness dashboards.
+
+### How it differs from Obsidian
+
+Obsidian is a writing tool — you edit in it. nekode's graph panel is a **navigation and status** tool. The distinction matters because:
+- The writing interface is Claude Code (natural language → structured document edits)
+- The graph panel shows the shape of the knowledge base, not the content
+- Filtered views are the primary interaction: "what's left in phase 2?", "what depends on this?", "what's at confidence:low?"
+- With 4 instances potentially touching different parts of the graph, the panel gives a bird's-eye view of what each instance is working on
+
+### What the panel shows
+
+- Document/section nodes with status tag colouring (green = implemented, blue = in-progress, grey = planned, red = deprecated)
+- Edges from markdown links between documents
+- Per-instance indicators: which parts of the graph each Claude Code instance is currently touching
+- Confidence overlay: dim nodes at `confidence:low`, bright nodes at `confidence:high`
+- Phase filtering: collapse/expand by phase to focus on current work
+
 ## Open questions
 
 - Should tags be enforced by a lint step or hook?
