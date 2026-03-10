@@ -103,6 +103,10 @@ export default function App({ skipPty = false }: AppProps) {
         setFocusedIndex(action.index);
         return;
       }
+      if (action.type === 'option') {
+        if (focusedRef.current) writeToInstance(focusedRef.current, action.key);
+        return;
+      }
 
       // 'pass' — forward to focused PTY
       const inst = focusedRef.current;
@@ -162,7 +166,7 @@ export default function App({ skipPty = false }: AppProps) {
           ))}
         </Text>
         <Text color="gray">
-          {LEADER_KEY} → 1-{INSTANCE_COUNT} switch | Ctrl+D quit
+          {LEADER_KEY} → 1-{INSTANCE_COUNT} switch | QWER option | Ctrl+D quit
         </Text>
       </Box>
     </Box>

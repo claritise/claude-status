@@ -6,8 +6,13 @@ export type LeaderAction =
   | { type: 'consumed' }
   /** Switch to instance at this index (0-based) */
   | { type: 'switch'; index: number }
+  /** Send an option key (digit) to the focused PTY */
+  | { type: 'option'; key: string }
   /** Not a leader sequence — caller should handle the input normally */
   | { type: 'pass' };
+
+/** Maps Q/W/E/R to Claude Code option digits 1/2/3/4 */
+const OPTION_KEY_MAP: Record<string, string> = { q: '1', w: '2', e: '3', r: '4' };
 
 /**
  * Create a leader key handler (pure state machine, no React dependency).
@@ -15,6 +20,7 @@ export type LeaderAction =
  *
  * Leader sequences:
  * - Ctrl+A → 1/2/3/4: switch instance
+ * - Ctrl+A → Q/W/E/R: send option digit 1/2/3/4 to PTY
  * - Ctrl+A → Ctrl+A: pass through (sends literal Ctrl+A to PTY)
  * - Ctrl+A → (timeout): calls onLeaderTimeout
  * - Ctrl+A → (other): pass through
@@ -64,6 +70,12 @@ export function createLeaderKeyHandler(
       const num = parseInt(input, 10);
       if (!key.ctrl && num >= 1 && num <= INSTANCE_COUNT) {
         return { type: 'switch', index: num - 1 };
+      }
+
+      // Q/W/E/R sends option digit to focused PTY
+      const optionDigit = OPTION_KEY_MAP[input.toLowerCase()];
+      if (!key.ctrl && optionDigit) {
+        return { type: 'option', key: optionDigit };
       }
 
       // Unknown leader combo — pass through

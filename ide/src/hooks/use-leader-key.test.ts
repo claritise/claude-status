@@ -114,4 +114,44 @@ describe('leader key state machine', () => {
     // Normal input should pass through
     expect(handleKey('h', { ctrl: false })).toEqual({ type: 'pass' });
   });
+
+  it('Ctrl+A → Q sends option 1', () => {
+    const onTimeout = vi.fn();
+    const handleKey = createLeaderKeyHandler(onTimeout);
+
+    handleKey('a', { ctrl: true });
+    expect(handleKey('q', { ctrl: false })).toEqual({ type: 'option', key: '1' });
+  });
+
+  it('Ctrl+A → W sends option 2', () => {
+    const onTimeout = vi.fn();
+    const handleKey = createLeaderKeyHandler(onTimeout);
+
+    handleKey('a', { ctrl: true });
+    expect(handleKey('w', { ctrl: false })).toEqual({ type: 'option', key: '2' });
+  });
+
+  it('Ctrl+A → E sends option 3', () => {
+    const onTimeout = vi.fn();
+    const handleKey = createLeaderKeyHandler(onTimeout);
+
+    handleKey('a', { ctrl: true });
+    expect(handleKey('e', { ctrl: false })).toEqual({ type: 'option', key: '3' });
+  });
+
+  it('Ctrl+A → R sends option 4', () => {
+    const onTimeout = vi.fn();
+    const handleKey = createLeaderKeyHandler(onTimeout);
+
+    handleKey('a', { ctrl: true });
+    expect(handleKey('r', { ctrl: false })).toEqual({ type: 'option', key: '4' });
+  });
+
+  it('option keys work with uppercase too', () => {
+    const onTimeout = vi.fn();
+    const handleKey = createLeaderKeyHandler(onTimeout);
+
+    handleKey('a', { ctrl: true });
+    expect(handleKey('Q', { ctrl: false })).toEqual({ type: 'option', key: '1' });
+  });
 });

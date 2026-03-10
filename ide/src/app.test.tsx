@@ -36,4 +36,9 @@ describe('App', () => {
     const { lastFrame } = render(<App skipPty />);
     expect(lastFrame()).toContain('Ctrl+D quit');
   });
+
+  it('renders option key hint', () => {
+    const { lastFrame } = render(<App skipPty />);
+    expect(lastFrame()).toContain('QWER option');
+  });
 });
