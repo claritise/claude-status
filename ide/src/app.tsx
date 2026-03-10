@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import {
   CHROME_ROWS,
@@ -14,6 +14,7 @@ import {
   writeToInstance,
 } from './lib/instance-manager.js';
 import { registerCleanupHandlers, setCleanupInstances } from './lib/cleanup.js';
+import { useLeaderKey } from './hooks/use-leader-key.js';
 import TerminalPane from './components/terminal-pane.js';
 import type { Instance } from './lib/types.js';
 
@@ -29,9 +30,23 @@ export default function App({ skipPty = false }: AppProps) {
   const rows = stdout?.rows ?? DEFAULT_ROWS;
   const paneRows = rows - CHROME_ROWS;
 
-  const tabs = Array.from({ length: INSTANCE_COUNT }, (_, i) => i + 1);
-  const [instance, setInstance] = useState<Instance | null>(null);
-  const instanceRef = useRef<Instance | null>(null);
+  const [instances, setInstances] = useState<Instance[]>([]);
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const instancesRef = useRef<Instance[]>([]);
+
+  // Get the currently focused instance
+  const focused = instances[focusedIndex] ?? null;
+  const focusedRef = useRef<Instance | null>(null);
+  focusedRef.current = focused;
+
+  // Leader key timeout: forward Ctrl+A to the focused PTY
+  const onLeaderTimeout = useCallback(() => {
+    if (focusedRef.current) {
+      writeToInstance(focusedRef.current, '\x01');
+    }
+  }, []);
+
+  const handleLeaderKey = useLeaderKey(onLeaderTimeout);
 
   // Register cleanup handlers once on mount
   useEffect(() => {
@@ -39,29 +54,40 @@ export default function App({ skipPty = false }: AppProps) {
     registerCleanupHandlers();
   }, [skipPty]);
 
-  // Spawn Claude Code on mount, clean up on unmount
+  // Spawn all instances on mount, clean up on unmount
   useEffect(() => {
     if (skipPty) return;
 
-    const inst = createInstance(0, columns, paneRows, process.cwd());
-    instanceRef.current = inst;
-    setInstance(inst);
-    setCleanupInstances([inst]);
+    const cwd = process.cwd();
+    const created: Instance[] = [];
+    for (let i = 0; i < INSTANCE_COUNT; i++) {
+      try {
+        created.push(createInstance(i, columns, paneRows, cwd));
+      } catch (err) {
+        process.stderr.write(`[nekode] failed to spawn instance ${i}: ${err}\n`);
+      }
+    }
+    instancesRef.current = created;
+    setInstances(created);
+    setCleanupInstances(created);
 
     return () => {
-      instanceRef.current = null;
+      instancesRef.current = [];
       setCleanupInstances([]);
-      void destroyInstance(inst);
+      for (const inst of created) {
+        void destroyInstance(inst);
+      }
     };
   }, [skipPty]);
 
-  // Handle terminal resize
+  // Handle terminal resize — resize all instances
   useEffect(() => {
-    if (!instanceRef.current) return;
-    resizeInstance(instanceRef.current, columns, paneRows);
+    for (const inst of instancesRef.current) {
+      resizeInstance(inst, columns, paneRows);
+    }
   }, [columns, paneRows]);
 
-  // Forward all input to the PTY
+  // Forward input to the focused PTY, with leader key interception
   useInput(
     (input, key) => {
       // Ctrl+D exits the nekode IDE
@@ -70,33 +96,42 @@ export default function App({ skipPty = false }: AppProps) {
         return;
       }
 
-      if (!instanceRef.current) return;
+      // Run through leader key state machine first
+      const action = handleLeaderKey(input, { ctrl: !!key.ctrl });
+      if (action.type === 'consumed') return;
+      if (action.type === 'switch') {
+        setFocusedIndex(action.index);
+        return;
+      }
 
-      // Translate Ink key events back to raw terminal sequences
+      // 'pass' — forward to focused PTY
+      const inst = focusedRef.current;
+      if (!inst) return;
+
       if (key.return) {
-        writeToInstance(instanceRef.current, '\r');
+        writeToInstance(inst, '\r');
       } else if (key.backspace || key.delete) {
-        writeToInstance(instanceRef.current, '\x7f');
+        writeToInstance(inst, '\x7f');
       } else if (key.escape) {
-        writeToInstance(instanceRef.current, '\x1b');
+        writeToInstance(inst, '\x1b');
       } else if (key.upArrow) {
-        writeToInstance(instanceRef.current, '\x1b[A');
+        writeToInstance(inst, '\x1b[A');
       } else if (key.downArrow) {
-        writeToInstance(instanceRef.current, '\x1b[B');
+        writeToInstance(inst, '\x1b[B');
       } else if (key.rightArrow) {
-        writeToInstance(instanceRef.current, '\x1b[C');
+        writeToInstance(inst, '\x1b[C');
       } else if (key.leftArrow) {
-        writeToInstance(instanceRef.current, '\x1b[D');
+        writeToInstance(inst, '\x1b[D');
       } else if (key.tab) {
-        writeToInstance(instanceRef.current, '\t');
+        writeToInstance(inst, '\t');
       } else if (key.ctrl && input) {
-        // Convert ctrl+letter to control character (ctrl+a = 0x01, ctrl+c = 0x03, etc.)
+        // Convert letter to control char: 'a'(97) - 96 = 1 = Ctrl+A, etc.
         const code = input.charCodeAt(0) - 96;
         if (code > 0 && code < 27) {
-          writeToInstance(instanceRef.current, String.fromCharCode(code));
+          writeToInstance(inst, String.fromCharCode(code));
         }
       } else if (input) {
-        writeToInstance(instanceRef.current, input);
+        writeToInstance(inst, input);
       }
     },
     { isActive: true },
@@ -104,20 +139,25 @@ export default function App({ skipPty = false }: AppProps) {
 
   return (
     <Box flexDirection="column" width={columns} height={rows}>
-      <Box paddingX={1}>
-        <Text bold color="white">
-          nekode
+      <Box paddingX={1} justifyContent="space-between">
+        <Box>
+          <Text bold color="white">
+            nekode
+          </Text>
+          <Text color="gray"> — {INSTANCE_COUNT}x Claude Code multiplexer</Text>
+        </Box>
+        <Text bold color="cyan">
+          [{focusedIndex + 1}]
         </Text>
-        <Text color="gray"> — {INSTANCE_COUNT}x Claude Code multiplexer</Text>
       </Box>
 
-      <TerminalPane instance={instance} offsetRow={2} rows={paneRows} cols={columns} />
+      <TerminalPane instance={focused} offsetRow={2} rows={paneRows} cols={columns} />
 
       <Box paddingX={1} justifyContent="space-between">
-        <Text color="gray">
-          {tabs.map((n, i) => (
-            <Text key={n} bold={i === 0} color={i === 0 ? 'cyan' : 'gray'}>
-              {i > 0 ? ' ' : ''}[{n}]
+        <Text>
+          {Array.from({ length: INSTANCE_COUNT }, (_, i) => (
+            <Text key={i} bold={i === focusedIndex} color={i === focusedIndex ? 'cyan' : 'gray'}>
+              {i > 0 ? ' ' : ''}[{i + 1}]
             </Text>
           ))}
         </Text>

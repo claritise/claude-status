@@ -27,28 +27,27 @@ export default function TerminalPane({ instance, offsetRow, rows, cols }: Termin
   useEffect(() => {
     if (!instance) return;
 
-    // Render on every xterm write (debounced via requestAnimationFrame-style loop)
-    let dirty = false;
-
-    const onWrite = instance.terminal.onWriteParsed(() => {
-      dirty = true;
-    });
+    // Always repaint every tick. Ink's clearTerminal path can overwrite our
+    // direct stdout writes, so we must repaint unconditionally to ensure
+    // colors and content persist. The 16ms interval (~60fps) keeps CPU
+    // usage reasonable.
+    let disposed = false;
 
     const tick = () => {
-      if (dirty) {
+      if (!disposed) {
         renderTerminalToScreen(instance.terminal, offsetRow, 1);
-        // Clear dirty AFTER render to avoid losing writes that arrive during render
-        dirty = false;
       }
-      rafRef.current = setTimeout(tick, RENDER_INTERVAL_MS);
+      if (!disposed) {
+        rafRef.current = setTimeout(tick, RENDER_INTERVAL_MS);
+      }
     };
 
-    // Initial render
+    // Initial render + start loop
     renderTerminalToScreen(instance.terminal, offsetRow, 1);
     rafRef.current = setTimeout(tick, RENDER_INTERVAL_MS);
 
     return () => {
-      onWrite.dispose();
+      disposed = true;
       if (rafRef.current) clearTimeout(rafRef.current);
     };
   }, [instance, offsetRow]);

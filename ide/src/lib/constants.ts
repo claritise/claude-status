@@ -19,3 +19,6 @@ export const PTY_KILL_TIMEOUT_MS = 3000;
 
 /** Render loop interval (ms) — ~60fps */
 export const RENDER_INTERVAL_MS = 16;
+
+/** Leader key timeout (ms) — if no follow-up key, forward Ctrl+A to PTY */
+export const LEADER_TIMEOUT_MS = 500;

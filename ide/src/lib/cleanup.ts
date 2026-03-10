@@ -22,8 +22,11 @@ async function runCleanup(): Promise<void> {
   if (cleanupRan) return;
   cleanupRan = true;
 
+  // Snapshot instances to avoid race with setCleanupInstances
+  const toClean = [...instances];
+
   // Kill all PTY processes first
-  await Promise.allSettled(instances.map((inst) => destroyInstance(inst)));
+  await Promise.allSettled(toClean.map((inst) => destroyInstance(inst)));
 
   // Remove worktrees and branches
   try {
